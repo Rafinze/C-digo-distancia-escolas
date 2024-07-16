@@ -1,0 +1,68 @@
+using CSV
+using HiGHS
+using JuMP
+using DataFrames 
+#using Gurobi
+#------------------------------------------------------------------------Dados---------------------------------------------------------------------------------------#
+
+distancia = CSV.read("C:/Users/bruno/Desktop/IC/Dados/dados_demanda - chuva_meses.csv", DataFrame)
+capacidade_esc = CSV.read("C:/Users/bruno/Desktop/IC/Dados/dados_demanda - chuva_meses.csv", DataFrame)
+
+na = 10
+ne = 5
+nc = 2
+
+#modelo = Model(Gurobi.Optimizer) 
+modelo = Model(HiGHS.Optimizer) #Criação do objeto do modelo
+
+m_aux = Matrix(distancia)
+D = m_aux[:,2:ne+1]
+
+vet = Matrix(capacidade_esc)
+vet_capacidade = vet[:,2:nc+1]
+#--------------------------------------------------------------------------------------------------------------------------------------------------------------------#
+
+
+
+#--------------------------------------------------------------------------Variáveis---------------------------------------------------------------------------------#
+@variable(modelo, x[1:na, 1:ne], binary = true) 
+# #--------------------------------------------------------------------------------------------------------------------------------------------------------------------#
+
+
+
+#-------------------------------------------------------------------------Restrições---------------------------------------------------------------------------------#
+
+# Restrições para o volume
+for aluno in 1:na
+    @constraint(modelo, sum(x[aluno,escola] for escola in 1: ne) == 1)
+end
+
+for escola ∈ 1:ne
+    @constraint(modelo, sum(x[aluno,escola] for aluno ∈ 1:na) <= vet_capacidade[escola, 1])
+end
+
+
+#-----------------------------------------------------------------------Função objetivo------------------------------------------------------------------------------#
+@objective(modelo, Min, sum(sum(D[aluno,escola]*x[aluno, escola] for aluno = 1:na) for escola = 1:ne))
+optimize!(modelo)
+print(modelo)
+#--------------------------------------------------------------------------------------------------------------------------------------------------------------------#
+
+
+
+#---------------------------------------------------------------------Verifaica a solução-----------------------------------------------------------------------------#
+# if termination_status(modelo) == MOI.OPTIMAL
+#     println("Uso de usinas termoelétricas por mês:")
+#     for i in 1:Meses
+#         println("Mês $i: ", [value(x[i,j]) for j in 1:n_termos])
+#     end
+#     println("Uso de usinas hidroelétricas por mês:")
+#     for i in 1:Meses
+#         println("Mês $i: ", [value(hidro[i, j]) for j in 1:num_usinas_hidro])
+#     end
+
+    println("Valor ótimo da função objetivo: ", objective_value(modelo))
+# else
+#     println("O modelo não encontrou uma solução ótima.")
+# end
+#--------------------------------------------------------------------------------------------------------------------------------------------------------------------#
